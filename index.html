@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="./count.css"/> 
+    <script src="https://kit.fontawesome.com/9885839914.js" crossorigin="anonymous"></script>
+    <title>Countdown Timer</title>
+</head>
+<body>
+    <div class="web">
+        <div class="container">
+            <h1>Countdown Timer</h1>
+            <div class="timer">
+                <div class="count">
+                    <div class="inp">
+                        <input class="date" type="date">
+                        <input class="time" type="time">
+                    </div>
+                    <div class="but">
+                        <div class="icon">
+                            <i class="fa-solid fa-circle-play"></i>
+                            <i class="fa-solid fa-circle-stop"></i>
+                        </div>
+                        <i class="fa-solid fa-rotate"></i>
+                    </div>
+                </div>
+                <div class="remains">
+                    <span id="days">0</span>
+                    <span id="hours">0</span>
+                    <span id="minutes">0</span>
+                    <span id="seconds">0</span>
+                </div>
+            </div>
+
+            <div class="foot">
+                <h1 class="RealDate"><span>0</span>-<span>0</span>-<span>0</span></h1>
+                <h1 class="RealTime"><span>0</span>:<span>0</span></h1>
+            </div>
+        </div>
+    </div>
+    <script src="./count.js"></script>
+</body>
+</html>
