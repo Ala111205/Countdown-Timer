@@ -10,28 +10,36 @@
 <body>
     <div class="web">
         <div class="container">
-            <h1>Countdown Timer</h1>
-            <div class="timer">
-                <div class="count">
-                    <div class="inp">
-                        <input class="date" type="date">
-                        <input class="time" type="time">
-                    </div>
-                    <div class="but">
-                        <div class="icon">
-                            <i class="fa-solid fa-circle-play"></i>
-                            <i class="fa-solid fa-circle-stop"></i>
+            <div>
+                <h1>Countdown Timer</h1>
+            </div>
+            <div class="timerContainer">
+                <div class="timer">
+                    <div class="count">
+                        <div class="inp">
+                            <input class="date" type="date">
+                            <input class="time" type="time">
                         </div>
-                        <i class="fa-solid fa-rotate"></i>
+                        <div class="but">
+                            <div class="icon">
+                                <i class="fa-solid fa-circle-play"></i>
+                                <i class="fa-solid fa-circle-stop"></i>
+                            </div>
+                            <i class="fa-solid fa-rotate"></i>
+                        </div>
                     </div>
-                </div>
-                <div class="remains">
-                    <span class="days">0</span>
-                    <span class="hours">0</span>
-                    <span class="minutes">0</span>
-                    <span class="seconds">0</span>
+                    <div class="remains">
+                        <span class="days">0</span>
+                        <span class="hours">0</span>
+                        <span class="minutes">0</span>
+                        <span class="seconds">0</span>
+                    </div>
                 </div>
             </div>
+
+            <i class="fa-solid fa-plus"></i>
+
+            <audio id="alarm-sound" src="alarm.mp3" preload="auto"></audio>
 
             <div class="foot">
                 <h1 class="RealDate"><span>0</span>-<span>0</span>-<span>0</span></h1>
