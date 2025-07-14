@@ -270,6 +270,8 @@
 
     .count {
         padding: 18px;
+        padding-left: 8px;
+        padding-right: 8px;
     }
     .days {
         width: 34px;
