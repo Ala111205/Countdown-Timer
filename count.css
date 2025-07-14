@@ -274,6 +274,8 @@ input{
 
     .count {
         padding: 18px;
+    }
+    .inp {
         padding-left: 15px;
         padding-right: 15px;
     }
