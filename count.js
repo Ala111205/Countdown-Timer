@@ -60,6 +60,7 @@ span[0].textContent=new Date().getHours();
 span[1].textContent=new Date().getMinutes();
 
 let countDownInterval;
+let alarm;
 
 startBtn.addEventListener("click",()=>{
 
@@ -88,12 +89,15 @@ startBtn.addEventListener("click",()=>{
         const distance=targetDateTime-now;
 
         if(distance<=0){
+            alarm=setInterval(()=>{
+                alarmSound.play();
+            },500)
+
             clearInterval(countDownInterval);
             daysEl.textContent="0";
             hoursEl.textContent="0";
             minutesEl.textContent="0";
             secondsEl.textContent="0";
-            alert("CountDown Finished");
             return;
         }
 
@@ -139,8 +143,20 @@ resetBtn.addEventListener("click",()=>{
 
         dateInput.value="";
         timeInput.value="";
-            
+
+        console.log("Clearing alarm interval:", alarm);
+        if (alarm) {
+        clearInterval(alarm);
+        alarm = null;
+        console.log("Alarm interval cleared");
         }
+
+        console.log("Pausing alarm sound");
+        alarmSound.pause();
+        alarmSound.currentTime = 0;
+        console.log("Alarm sound paused and reset");
+            
+    }
 });
 
 const addBtn = document.querySelector(".fa-plus");
@@ -197,6 +213,7 @@ function createTimer(){
 
     let countDownInterval = null;
     let targetDateTime = null;
+    let alarm=null;
 
     startBtn.addEventListener("click", ()=>{
         const dateValue = dateInput.value;
@@ -224,14 +241,15 @@ function createTimer(){
             const distance = targetDateTime - now;
 
             if(distance<=0){
+                alarm=setInterval(()=>{
+                    alarmSound.play();
+                },500)
+
                 clearInterval(countDownInterval);
                 days.textContent=0;
                 hours.textContent=0;
                 minutes.textContent=0;
                 seconds.textContent=0;
-
-                alarmSound.play();
-                alert("Countdown finished")
             }
 
             days.textContent = Math.floor(distance/(1000*60*60*24));
@@ -259,7 +277,7 @@ function createTimer(){
         resetBtn.classList.remove("rotate");
         void resetBtn.offsetWidth;
         resetBtn.classList.add("rotate");
-            if(countDownInterval){
+        if(countDownInterval){
             clearInterval(countDownInterval);
         }
         countDownInterval = null;
@@ -272,6 +290,19 @@ function createTimer(){
         
         dateInput.value="";
         timeInput.value="";
+
+        console.log("Clearing alarm interval:", alarm);
+        if (alarm) {
+        clearInterval(alarm);
+        alarm = null;
+        console.log("Alarm interval cleared");
+        }
+
+        console.log("Pausing alarm sound");
+        alarmSound.pause();
+        alarmSound.currentTime = 0;
+        console.log("Alarm sound paused and reset");
+
     });
 
     return Newdiv;
