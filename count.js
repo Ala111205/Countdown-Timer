@@ -91,7 +91,7 @@ startBtn.addEventListener("click",()=>{
         if(distance<=0){
             alarm=setInterval(()=>{
                 alarmSound.play();
-            },300)
+            },100)
 
             clearInterval(countDownInterval);
             daysEl.textContent="0";
@@ -243,7 +243,7 @@ function createTimer(){
             if(distance<=0){
                 alarm=setInterval(()=>{
                     alarmSound.play();
-                },300)
+                },100)
 
                 clearInterval(countDownInterval);
                 days.textContent=0;
