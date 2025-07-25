@@ -121,6 +121,18 @@ stopBtn.addEventListener("click",()=>{
         clearInterval(countDownInterval);
         countDownInterval=null;
     }
+
+    console.log("Clearing alarm interval:", alarm);
+    if (alarm) {
+        clearInterval(alarm);
+        alarm = null;
+        console.log("Alarm interval cleared");
+    }
+
+    console.log("Pausing alarm sound");
+    alarmSound.pause();
+    alarmSound.currentTime = 0;
+    console.log("Alarm sound paused and reset");
 });
 
 resetBtn.addEventListener("click",()=>{
@@ -268,6 +280,18 @@ function createTimer(){
             clearInterval(countDownInterval);
         }
         countDownInterval = null;
+
+        console.log("Clearing alarm interval:", alarm);
+        if (alarm) {
+        clearInterval(alarm);
+        alarm = null;
+        console.log("Alarm interval cleared");
+        }
+
+        console.log("Pausing alarm sound");
+        alarmSound.pause();
+        alarmSound.currentTime = 0;
+        console.log("Alarm sound paused and reset");
     });
 
     resetBtn.addEventListener("click", ()=>{
