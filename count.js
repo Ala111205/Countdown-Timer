@@ -132,7 +132,7 @@ stopBtn.addEventListener("click",()=>{
     console.log("Pausing alarm sound");
     alarmSound.pause();
     alarmSound.currentTime = 0;
-    console.log("Alarm sound paused and reset");
+        console.log("Alarm sound paused and reset");
 });
 
 resetBtn.addEventListener("click",()=>{
