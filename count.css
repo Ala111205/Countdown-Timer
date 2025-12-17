@@ -2,6 +2,11 @@
     padding: 0px;
     margin: 0px;
     box-sizing: border-box;
+    scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 .web {
@@ -17,7 +22,7 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap:10px;
+    gap:5px;
 }
 
 .container>div:first-child {
@@ -39,7 +44,7 @@
 .timerContainer{
     width:100%;
     min-height: 350px;
-    margin-top: 82px;
+    margin-top: 64px;
     display:flex;
     flex-wrap: wrap;
     justify-content: center;

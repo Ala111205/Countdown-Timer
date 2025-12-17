@@ -42,11 +42,17 @@
             <audio id="alarm-sound" src="alarm.mp3" preload="auto"></audio>
 
             <div class="foot">
-                <h1 class="RealDate"><span>0</span>-<span>0</span>-<span>0</span></h1>
-                <h1 class="RealTime"><span>0</span>:<span>0</span></h1>
+                <h1 class="RealDate">
+                    <span class="day">0</span>-<span class="month">0</span>-<span class="year">0</span>
+                </h1>
+
+                <h1 class="RealTime">
+                    <span class="hour">0</span>:<span class="minute">0</span>
+                    <span class="ampm">AM</span>
+                </h1>
             </div>
         </div>
     </div>
-    <script src="./count.js"></script>
+    <script type="module" src="./count.js"></script>
 </body>
 </html>

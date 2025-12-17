@@ -1,354 +1,346 @@
-/**
- * Validates and formats date input safely
- * @param {string} dateValue - Input date string (DD-MM-YYYY or YYYY-MM-DD)
- * @param {string} timeValue - Input time string (HH:MM)
- * @returns {Date|null} Returns valid Date object or null if invalid
- */
+import { saveAlarm, updateAlarm, getAllAlarms, deleteAlarm } from "./db.js";
 
-function getValidatedDateTime(dateValue, timeValue){
-    if(!dateValue || !timeValue){
-        alert("Please enter the both date and time");
-        return null;
-    }
+// ===== GLOBALS =====
+let alarms = [];
+let activeSoundAlarmId = null;
+let globalAlarmInterval = null;
 
-    let formattedDate;
-
-    if(dateValue.includes("-") && dateValue.split("-")[0].length===2){
-        const [day, month, year]=dateValue.split("-");
-        formattedDate=`${year}-${month}-${day}`
-    }else {
-        formattedDate = dateValue;
-    }
-
-    const targetDateTime=new Date(`${formattedDate}T${timeValue}:00`);
-
-    if(isNaN(targetDateTime.getTime())){
-        alert("Invalid date or time format");
-        return null;
-    }
-
-    if(targetDateTime<=new Date()){
-        alert("Please provide a future date and time");
-        return null;
-    }
-
-    return targetDateTime;
-}
-
-const startBtn=document.querySelector(".fa-circle-play");
-const stopBtn=document.querySelector(".fa-circle-stop");
-const resetBtn=document.querySelector(".fa-rotate");
-const timeInput=document.querySelector(".time");
-const dateInput=document.querySelector(".date");
-
-const daysEl=document.querySelector(".days");
-const hoursEl=document.querySelector(".hours");
-const minutesEl=document.querySelector(".minutes");
-const secondsEl=document.querySelector(".seconds");
-
-const RealDate=document.querySelector(".RealDate");
-const RealTime=document.querySelector(".RealTime");
-
-let spans=RealDate.querySelectorAll("span");
-let span=RealTime.querySelectorAll("span");
-
-spans[0].textContent=new Date().getDate();
-spans[1].textContent=new Date().getMonth()+1;
-spans[2].textContent=new Date().getFullYear();
-
-span[0].textContent=new Date().getHours();
-span[1].textContent=new Date().getMinutes();
-
-let countDownInterval;
-let alarm;
-
-startBtn.addEventListener("click",()=>{
-
-  stopBtn.classList.add("bounce");
-
-  const targetDateTime = getValidatedDateTime(dateInput.value, timeInput.value);
-
-  const dateValue=dateInput.value;
-  const timeValue=timeInput.value;
-
-  if (targetDateTime && dateValue && timeValue){
-    stopBtn.classList.add("stop");
-    startBtn.style="display:none";
-  }
-
-  if (!targetDateTime) {
-    return; // Stop if validation fails
-  }
-
-    if(countDownInterval){
-        clearInterval(countDownInterval);
-    }
-
-    countDownInterval=setInterval(()=>{
-        const now=new Date().getTime();
-        const distance=targetDateTime-now;
-
-        if(distance<=0){
-            alarm=setInterval(()=>{
-                alarmSound.play();
-            },100)
-
-            clearInterval(countDownInterval);
-            daysEl.textContent="0";
-            hoursEl.textContent="0";
-            minutesEl.textContent="0";
-            secondsEl.textContent="0";
-            return;
-        }
-
-        const days=Math.floor(distance/(1000*60*60*24));
-        const hours=Math.floor(distance%(1000*60*60*24)/(1000*60*60));
-        const minutes=Math.floor(distance%(1000*60*60)/(1000*60));
-        const seconds=Math.floor(distance%(1000*60)/1000);
-
-        daysEl.textContent=days;
-        hoursEl.textContent=hours;
-        minutesEl.textContent=minutes;
-        secondsEl.textContent=seconds;
-
-    },1000);
-})
-
-stopBtn.addEventListener("click",()=>{
-    stopBtn.classList.remove("stop");
-    startBtn.style="display:block";
-    if(countDownInterval){
-        clearInterval(countDownInterval);
-        countDownInterval=null;
-    }
-
-    console.log("Clearing alarm interval:", alarm);
-    if (alarm) {
-        clearInterval(alarm);
-        alarm = null;
-        console.log("Alarm interval cleared");
-    }
-
-    console.log("Pausing alarm sound");
-    alarmSound.pause();
-    alarmSound.currentTime = 0;
-        console.log("Alarm sound paused and reset");
-});
-
-resetBtn.addEventListener("click",()=>{
-    stopBtn.classList.remove("stop");
-    startBtn.style="display:block";
-
-    resetBtn.classList.remove("rotate");
-    void resetBtn.offsetWidth;
-    resetBtn.classList.add("rotate");
-    
-    if(countDownInterval){
-        clearInterval(countDownInterval);
-        countDownInterval=null;
-        targetDateTime=null;
-
-        daysEl.textContent="0";
-        hoursEl.textContent="0";
-        minutesEl.textContent="0";
-        secondsEl.textContent="0";
-
-        dateInput.value="";
-        timeInput.value="";
-
-        console.log("Clearing alarm interval:", alarm);
-        if (alarm) {
-        clearInterval(alarm);
-        alarm = null;
-        console.log("Alarm interval cleared");
-        }
-
-        console.log("Pausing alarm sound");
-        alarmSound.pause();
-        alarmSound.currentTime = 0;
-        console.log("Alarm sound paused and reset");
-            
-    }
-});
-
+// ===== DOM ELEMENTS =====
 const addBtn = document.querySelector(".fa-plus");
 const timerContainer = document.querySelector(".timerContainer");
 const alarmSound = document.getElementById("alarm-sound");
 
-addBtn.addEventListener("click", ()=>{
-    const newTimer = createTimer();
-    timerContainer.appendChild(newTimer)
+// ===== SERVICE WORKER & INITIAL LOAD =====
+document.addEventListener("DOMContentLoaded", async () => {
+  // Service Worker
+  if ("serviceWorker" in navigator) {
+    await navigator.serviceWorker.register("sw.js");
+    if (Notification.permission === "default") {
+      await Notification.requestPermission();
+    }
+    await new Promise(resolve => {
+      if (navigator.serviceWorker.controller) return resolve();
+      navigator.serviceWorker.addEventListener("controllerchange", resolve, { once: true });
+    });
+  }
+
+  alarms = await getAllAlarms();
+
+  // Create ONE default alarm if DB is empty
+  if (alarms.length === 0) {
+    const defaultAlarm = {
+      id: crypto.randomUUID(),
+      status: "draft",
+      createdAt: Date.now(),
+      time: null,
+      date: "",
+      clock: ""
+    };
+    await saveAlarm(defaultAlarm);
+    alarms = [defaultAlarm];
+  }
+
+  // Clear container (no HTML timers)
+  timerContainer.innerHTML = "";
+
+  // Restore ALL alarms (draft + scheduled + stopped)
+  alarms
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .forEach(alarm => {
+      const timerEl = createTimer(alarm);
+      timerContainer.appendChild(timerEl);
+    });
+
+  updateRealDateTime();
+  setInterval(updateRealDateTime, 60_000);
 });
 
-function createTimer(){
+// ===== SW MESSAGE =====
+navigator.serviceWorker.addEventListener("message", (event) => {
+  const { type, id } = event.data || {};
+  if (!type) return;
 
-    const Newdiv = document.createElement("div");
-    Newdiv.classList.add("timer");
+  if (type === "STOP_ALARM") {
+    stopAlarmSound(id);
+    clearBackgroundAlarm(id);
+    updateAlarm({ id, status: "stopped" });
+  }
 
-    Newdiv.innerHTML = `
-                <div class="count">
-                    <div class="inp">
-                        <input class="date" type="date">
-                        <input class="time" type="time">
-                    </div>
-                    <div class="but">
-                        <div class="icon">
-                            <i class="fa-solid fa-circle-play"></i>
-                            <i class="fa-solid fa-circle-stop"></i>
-                        </div>
-                            <i class="fa-solid fa-rotate"></i>
-                        </div>
-                    </div>
-                    <div class="remains">
-                        <span class="days">0</span>
-                        <span class="hours">0</span>
-                        <span class="minutes">0</span>
-                        <span class="seconds">0</span>
-                    </div>
-                <div>
-    `;
+  // UI STATE
+    const timerEl = document.querySelector(`.timer[data-id="${id}"]`);
+    if (!timerEl) return;
 
-    const dateInput = Newdiv.querySelector(".date");
-    const timeInput = Newdiv.querySelector(".time");
-    const startBtn = Newdiv.querySelector(".fa-circle-play");
-    const stopBtn = Newdiv.querySelector(".fa-circle-stop");
-    const resetBtn = Newdiv.querySelector(".fa-rotate");
+    const startBtn = timerEl.querySelector(".fa-circle-play");
+    const stopBtn = timerEl.querySelector(".fa-circle-stop");
 
-    const days = Newdiv.querySelector(".days");
-    const hours = Newdiv.querySelector(".hours");
-    const minutes = Newdiv.querySelector(".minutes");
-    const seconds = Newdiv.querySelector(".seconds");
+    stopBtn.classList.remove("stop");
+    startBtn.style.display = "block";
+});
 
-    console.log("startBtn" , startBtn);
-    console.log("stopBtn", stopBtn);
-    console.log("resetBtn", resetBtn);
-
-    let countDownInterval = null;
-    let targetDateTime = null;
-    let alarm=null;
-
-    startBtn.addEventListener("click", ()=>{
-        const dateValue = dateInput.value;
-        const timeValue = timeInput.value;
-
-        targetDateTime = getValidateDateTime(dateValue, timeValue);
-
-        if (targetDateTime && dateValue && timeValue){
-            stopBtn.classList.remove("stop");
-            void stopBtn.offsetWidth; // force reflow
-            stopBtn.classList.add("stop");
-            startBtn.style="display:none";
-        }
-
-        if(!targetDateTime){
-            return;
-        }
-
-        if (countDownInterval){
-            clearInterval(countDownInterval);
-        }
-
-        countDownInterval=setInterval(()=>{
-            const now = new Date().getTime();
-            const distance = targetDateTime - now;
-
-            if(distance<=0){
-                alarm=setInterval(()=>{
-                    alarmSound.play();
-                },100)
-
-                clearInterval(countDownInterval);
-                days.textContent=0;
-                hours.textContent=0;
-                minutes.textContent=0;
-                seconds.textContent=0;
-            }
-
-            days.textContent = Math.floor(distance/(1000*60*60*24));
-            hours.textContent = Math.floor(distance%(1000*60*60*24)/(1000*60*60));
-            minutes.textContent = Math.floor(distance%(1000*60*60)/(1000*60));
-            seconds.textContent = Math.floor(distance%(1000*60)/(1000))
-
-        }, 1000)
-    });
-    
-    stopBtn.addEventListener("click", ()=>{
-        stopBtn.classList.remove("stop");
-        startBtn.style="display:block";
-
-        if(countDownInterval){
-            clearInterval(countDownInterval);
-        }
-        countDownInterval = null;
-
-        console.log("Clearing alarm interval:", alarm);
-        if (alarm) {
-        clearInterval(alarm);
-        alarm = null;
-        console.log("Alarm interval cleared");
-        }
-
-        console.log("Pausing alarm sound");
-        alarmSound.pause();
-        alarmSound.currentTime = 0;
-        console.log("Alarm sound paused and reset");
-    });
-
-    resetBtn.addEventListener("click", ()=>{
-        stopBtn.classList.remove("stop");
-        startBtn.style="display:block";
-
-        resetBtn.classList.remove("rotate");
-        void resetBtn.offsetWidth;
-        resetBtn.classList.add("rotate");
-        if(countDownInterval){
-            clearInterval(countDownInterval);
-        }
-        countDownInterval = null;
-        targetDateTime = null;
-
-        days.textContent=0;
-        hours.textContent=0;
-        minutes.textContent=0;
-        seconds.textContent=0;
-        
-        dateInput.value="";
-        timeInput.value="";
-
-        console.log("Clearing alarm interval:", alarm);
-        if (alarm) {
-        clearInterval(alarm);
-        alarm = null;
-        console.log("Alarm interval cleared");
-        }
-
-        console.log("Pausing alarm sound");
-        alarmSound.pause();
-        alarmSound.currentTime = 0;
-        console.log("Alarm sound paused and reset");
-
-    });
-
-    return Newdiv;
+// ===== DATE/TIME VALIDATION =====
+function getValidatedDateTime(dateValue, timeValue) {
+  if (!dateValue || !timeValue) return null;
+  let formattedDate = dateValue;
+  if (dateValue.includes("-") && dateValue.split("-")[0].length === 2) {
+    const [day, month, year] = dateValue.split("-");
+    formattedDate = `${year}-${month}-${day}`;
+  }
+  const dt = new Date(`${formattedDate}T${timeValue}:00`);
+  return isNaN(dt.getTime()) || dt <= new Date() ? null : dt;
 }
 
-function getValidateDateTime(dateValue, timeValue){
-    if(!dateValue || !timeValue){
-        alert("Please provide both date and time");
-        return null;
+// ===== COUNTDOWN =====
+function startCountdown(targetDateTime, updateFn, alarmId) {
+  const interval = setInterval(async () => {
+    const distance = targetDateTime - Date.now();
+    if (distance <= 0) {
+      clearInterval(interval);
+      updateFn(0, 0, 0, 0);
+      playAlarmSound(alarmId);
+      await updateAlarm({ id: alarmId, status: "fired" });
+    } else {
+      updateFn(
+        Math.floor(distance / 86400000),
+        Math.floor((distance % 86400000) / 3600000),
+        Math.floor((distance % 3600000) / 60000),
+        Math.floor((distance % 60000) / 1000)
+      );
     }
+  }, 1000);
+  return interval;
+}
 
-    const targetDateTime = new Date(`${dateValue}T${timeValue}:00`);
+function playAlarmSound(alarmId) {
+  if (activeSoundAlarmId) return;
+  activeSoundAlarmId = alarmId;
+  globalAlarmInterval = setInterval(() => alarmSound.play(), 100);
+}
 
-    if (isNaN(targetDateTime.getTime())) {
-        alert("Invalid date or time format.");
-        return null;
+function stopAlarmSound(alarmId) {
+  if (alarmId !== activeSoundAlarmId) return;
+  clearInterval(globalAlarmInterval);
+  globalAlarmInterval = null;
+  activeSoundAlarmId = null;
+  alarmSound.pause();
+  alarmSound.currentTime = 0;
+}
+
+function registerAlarmWithSW(alarm) {
+  if (!navigator.serviceWorker.controller) return;
+  navigator.serviceWorker.controller.postMessage({ type: "SET_ALARM", payload: alarm });
+}
+
+function clearBackgroundAlarm(alarmId) {
+  if (!alarmId || !navigator.serviceWorker.controller) return;
+  navigator.serviceWorker.controller.postMessage({ type: "CLEAR_ALARM", payload: { id: alarmId } });
+}
+
+// ===== MULTIPLE TIMERS SUPPORT =====
+addBtn.addEventListener("click", async () => {
+  const alarm = { id: crypto.randomUUID(), time: null, date: "", clock: "", status: "draft", createdAt: Date.now() };
+  await saveAlarm(alarm);
+  const timerEl = createTimer(alarm);
+  timerContainer.appendChild(timerEl);
+});
+
+function createTimer(alarm = null, existingTimerEl = null) {
+  // Use existing timer element or create new
+  const timerEl = existingTimerEl || document.createElement("div");
+  if (!existingTimerEl) {
+    timerEl.classList.add("timer");
+    timerEl.innerHTML = `
+      <div class="count">
+        <div class="inp">
+          <input class="date" type="date">
+          <input class="time" type="time">
+        </div>
+        <div class="but">
+          <div class="icon">
+            <i class="fa-solid fa-circle-play"></i>
+            <i class="fa-solid fa-circle-stop"></i>
+          </div>
+          <i class="fa-solid fa-rotate"></i>
+        </div>
+      </div>
+      <div class="remains">
+        <span class="days">0</span>
+        <span class="hours">0</span>
+        <span class="minutes">0</span>
+        <span class="seconds">0</span>
+      </div>
+    `;
+  }
+
+  // DOM elements
+  const dateInput = timerEl.querySelector(".date");
+  const timeInput = timerEl.querySelector(".time");
+  const startBtn = timerEl.querySelector(".fa-circle-play");
+  const stopBtn = timerEl.querySelector(".fa-circle-stop");
+  const resetBtn = timerEl.querySelector(".fa-rotate");
+  const daysEl = timerEl.querySelector(".days");
+  const hoursEl = timerEl.querySelector(".hours");
+  const minutesEl = timerEl.querySelector(".minutes");
+  const secondsEl = timerEl.querySelector(".seconds");
+
+  // Internal state
+  let countdownInterval = null;
+  if (!alarm) {
+    alarm = { id: crypto.randomUUID(), status: "draft", createdAt: Date.now(), time: null, date: "", clock: "" };
+    saveAlarm(alarm);
+  }
+  timerEl.dataset.id = alarm.id;
+  dateInput.value = alarm.date || "";
+  timeInput.value = alarm.clock || "";
+
+  // UI update helper
+  function updateUI(d, h, m, s) {
+    daysEl.textContent = d;
+    hoursEl.textContent = h;
+    minutesEl.textContent = m;
+    secondsEl.textContent = s;
+  }
+
+  // Restore scheduled alarms
+  if (alarm.status === "scheduled" && alarm.time > Date.now()) {
+    registerAlarmWithSW(alarm);
+    countdownInterval = startCountdown(new Date(alarm.time), updateUI, alarm.id);
+    startBtn.style.display = "none";
+    stopBtn.classList.add("stop");
+  }
+
+  // ===== START =====
+  startBtn.addEventListener("click", async () => {
+    const targetDateTime = getValidatedDateTime(dateInput.value, timeInput.value);
+    if (!targetDateTime) return alert("Invalid date/time");
+
+    if (countdownInterval) clearInterval(countdownInterval);
+
+    alarm.time = targetDateTime.getTime();
+    alarm.date = dateInput.value;
+    alarm.clock = timeInput.value;
+    alarm.status = "scheduled";
+
+    await updateAlarm(alarm);
+    registerAlarmWithSW(alarm);
+
+    countdownInterval = startCountdown(targetDateTime, updateUI, alarm.id);
+
+    startBtn.style.display = "none";
+    stopBtn.classList.add("stop");
+  });
+
+  // ===== STOP =====
+  stopBtn.addEventListener("click", async () => {
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownInterval = null;
+
+    stopAlarmSound(alarm.id);
+    clearBackgroundAlarm(alarm.id);
+
+    stopBtn.classList.remove("stop");
+    startBtn.style.display = "block";
+
+    alarm.status = "stopped";
+    await updateAlarm(alarm);
+  });
+
+  // ===== RESET =====
+  resetBtn.addEventListener("click", async () => {
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownInterval = null;
+
+    stopAlarmSound(alarm.id);
+    clearBackgroundAlarm(alarm.id);
+
+    updateUI(0, 0, 0, 0);
+    dateInput.value = "";
+    timeInput.value = "";
+
+    stopBtn.classList.remove("stop");
+    startBtn.style.display = "block";
+
+    alarm.status = "draft";
+    alarm.time = null;
+    alarm.date = "";
+    alarm.clock = "";
+    await updateAlarm(alarm);
+  });
+
+  attachLongPressDelete(timerEl, alarm);
+
+  return timerEl;
+}
+
+function attachLongPressDelete(timerEl, alarm) {
+  let pressTimer = null;
+  const HOLD_TIME = 800;
+  let startX = 0, startY = 0;
+
+  const start = e => {
+    const point = e.touches ? e.touches[0] : e;
+    startX = point.clientX; startY = point.clientY;
+
+    pressTimer = setTimeout(async () => {
+      const ok = confirm("Delete this alarm?");
+      if (!ok) return;
+      stopAlarmSound(alarm.id);
+      clearInterval(globalAlarmInterval);
+      await deleteAlarm(alarm.id);
+      timerEl.remove();
+    }, HOLD_TIME);
+  };
+
+  const move = e => {
+    if (!pressTimer) return;
+    const point = e.touches ? e.touches[0] : e;
+    if (Math.abs(point.clientX - startX) > 10 || Math.abs(point.clientY - startY) > 10) {
+      clearTimeout(pressTimer); pressTimer = null;
     }
+  };
 
-    if (targetDateTime <= new Date()) {
-        alert("Please select a future date and time.");
-        return null;
-    }
+  const cancel = () => { if (pressTimer) clearTimeout(pressTimer); pressTimer = null; };
 
-    return targetDateTime;
+  timerEl.addEventListener("mousedown", start);
+  timerEl.addEventListener("mousemove", move);
+  timerEl.addEventListener("mouseup", cancel);
+  timerEl.addEventListener("mouseleave", cancel);
+
+  timerEl.addEventListener("touchstart", start, { passive: true });
+  timerEl.addEventListener("touchmove", move, { passive: true });
+  timerEl.addEventListener("touchend", cancel);
+  timerEl.addEventListener("touchcancel", cancel);
+}
+
+// ===== REAL DATE & TIME (12-HOUR FORMAT) =====
+function updateRealDateTime() {
+  const now = new Date();
+
+  const day = String(now.getDate()).padStart(2, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = now.getFullYear();
+
+  let hours = now.getHours();
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12; // 0 → 12
+  hours = String(hours).padStart(2, "0");
+
+  const dayEl = document.querySelector(".RealDate .day");
+  const monthEl = document.querySelector(".RealDate .month");
+  const yearEl = document.querySelector(".RealDate .year");
+
+  const hourEl = document.querySelector(".RealTime .hour");
+  const minuteEl = document.querySelector(".RealTime .minute");
+  const ampmEl = document.querySelector(".RealTime .ampm");
+
+  if (!dayEl || !hourEl || !ampmEl) return;
+
+  dayEl.textContent = day;
+  monthEl.textContent = month;
+  yearEl.textContent = year;
+
+  hourEl.textContent = hours;
+  minuteEl.textContent = minutes;
+  ampmEl.textContent = ampm;
 }
